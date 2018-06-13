@@ -13,6 +13,8 @@
 #include <unistd.h>
 #endif
 
+#define EXIT_CODE 87
+
 using namespace v8;
 
 Isolate *isolate;                       // captured v8 isolate
@@ -20,6 +22,7 @@ double timeout;                         // configured timeout (in millis)
 uv_thread_t monitor_thread_id;          // id of the monitor thread
 uv_rwlock_t _last_ping_time_lock;       // rw lock for the ping time
 unsigned long long _last_ping_time = 0; // last ping time (when the JS event loop was alive)
+long long delta_ping_time;
 
 unsigned long long epoch_millis()
 {
@@ -52,17 +55,26 @@ void write_last_ping_time(unsigned long long value)
     uv_rwlock_wrunlock(&_last_ping_time_lock);
 }
 
+void replace_newlines(char *buffer, size_t size) {
+    //int linescount = 0;
+    for (size_t i = 0; i < size; i++) {
+        if (buffer[i] == '\n' || buffer[i] == '\r') buffer[i] = (i == size - 1 ? 0: ' ');
+    }
+}
+
 void monitor_stop(Isolate *isolate, void *data)
 {
-    fprintf(stderr, "Here is the JavaScript stack trace:\n");
-    fprintf(stderr, "======================================native-watchdog======================================\n");
-    Message::PrintCurrentStackTrace(isolate, stderr);
-    fprintf(stderr, "======================================native-watchdog======================================\n");
-    fprintf(stderr, "The module native-watchdog will now terminate the process with exit code 87.\n");
-
+    char* buffer = NULL;
+    size_t bufferSize = 0;
+    FILE* stackDescr = open_memstream(&buffer, &bufferSize);
+    Message::PrintCurrentStackTrace(isolate, stackDescr);
+    fclose(stackDescr);
+    replace_newlines(buffer, bufferSize);
+    fprintf(stderr, "{\"name\":\"Error\",\"message\":\"Event loop unresponsive for %lld ms, will seppuku with code %d\",\"stack\":\"%s\"}\n", delta_ping_time, EXIT_CODE, buffer);
+    free(buffer);
     // Choosing a value different than any of the ones at
     // https://github.com/nodejs/node/blob/master/doc/api/process.md#exit-codes
-    exit(87);
+    exit(EXIT_CODE);
 }
 
 void monitor(void *arg)
@@ -86,12 +98,11 @@ void monitor(void *arg)
         } else {
 
             unsigned long long last_ping_time = read_last_ping_time();
-            long long delta_ping_time = now - last_ping_time;
+            delta_ping_time = now - last_ping_time;
 
             if (delta_ping_time > timeout)
             {
                 // More time than allowed via `timeout` has passed since we've been pinged
-                fprintf(stderr, "The module native-watchdog has detected that the event loop is unresponsive (%lld ms).\n", delta_ping_time);
                 isolate->RequestInterrupt(monitor_stop, NULL);
             }
 
