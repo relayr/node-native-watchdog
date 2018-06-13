@@ -64,6 +64,10 @@ void replace_newlines(char *buffer, size_t size) {
 
 void monitor_stop(Isolate *isolate, void *data)
 {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+    fprintf(stderr, "{\"name\":\"Error\",\"message\":\"Event loop unresponsive for %lld ms, will seppuku with code %d\"}\n", delta_ping_time, EXIT_CODE);
+    Message::PrintCurrentStackTrace(isolate, stderr);
+#else
     char* buffer = NULL;
     size_t bufferSize = 0;
     FILE* stackDescr = open_memstream(&buffer, &bufferSize);
@@ -72,6 +76,7 @@ void monitor_stop(Isolate *isolate, void *data)
     replace_newlines(buffer, bufferSize);
     fprintf(stderr, "{\"name\":\"Error\",\"message\":\"Event loop unresponsive for %lld ms, will seppuku with code %d\",\"stack\":\"%s\"}\n", delta_ping_time, EXIT_CODE, buffer);
     free(buffer);
+#endif
     // Choosing a value different than any of the ones at
     // https://github.com/nodejs/node/blob/master/doc/api/process.md#exit-codes
     exit(EXIT_CODE);
