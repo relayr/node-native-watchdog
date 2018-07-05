@@ -149,4 +149,4 @@ void init(Local<Object> exports)
     NODE_SET_METHOD(exports, "exit", _Exit);
 }
 
-NODE_MODULE(addon, init)
+NODE_MODULE(watchdog, init)

@@ -3,9 +3,12 @@
  *  Licensed under the MIT License. See LICENSE in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-var watchdog = require('./build/Release/watchdog');
+const binary = require('node-pre-gyp');
+const path = require('path');
+const binding_path = binary.find(path.resolve(path.join(__dirname,'./package.json')));
+const watchdog = require(binding_path);
 
-var hasStarted = false;
+let hasStarted = false;
 
 exports.start = function(timeout) {
     if (hasStarted) {
