@@ -1,6 +1,6 @@
 {
-  "name": "@gpolakow/native-watchdog",
-  "version": "0.3.2",
+  "name": "@relayr/native-watchdog",
+  "version": "0.3.3",
   "description": "A native module that kills the current process if the event loop is unresponsive",
   "main": "index.js",
   "scripts": {
@@ -26,5 +26,8 @@
     "module_path": "./dist/",
     "host": "https://github.com/relayr/node-native-watchdog/releases/download/",
     "remote_path": "{version}"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pdmbuilds.proximetry.com:4873"
   }
 }
